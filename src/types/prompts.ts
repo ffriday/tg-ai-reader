@@ -1,4 +1,4 @@
-export type PropmtData = {
+export type PromptData = {
   interesting: string[];
   uninteresting: string[];
 };

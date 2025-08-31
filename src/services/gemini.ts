@@ -1,7 +1,7 @@
 import { GenerativeModel, GoogleGenerativeAI, type GenerateContentRequest, type Part } from '@google/generative-ai';
 import type { AIProvider, GeminiModel } from '@/types/ai';
 import { promptIsPostInteresting } from '@/config/prompts';
-import type { PropmtData } from '@/types/propmts';
+import type { PromptData } from '@/types/prompts';
 import { isNumber } from '@/utils/isNumber';
 
 export class GeminiAI implements AIProvider {
@@ -20,18 +20,28 @@ export class GeminiAI implements AIProvider {
     this.model = this.ai.getGenerativeModel({ model });
   }
 
-  private async ask(prompt: string | GenerateContentRequest | (string | Part)[]) {
-    try {
-      const result = await this.model.generateContent(prompt);
-      const response = result.response;
-      return response.text();
-    } catch (error) {
-      console.error('Error analyzing post with Gemini:', error);
-      return null;
-    }    
+  private async ask(prompt: string | GenerateContentRequest | (string | Part)[], retries: number = 3): Promise<string | null> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const result = await this.model.generateContent(prompt);
+        const response = result.response;
+        return response.text();
+      } catch (error) {
+        console.error(`Error analyzing post with Gemini (attempt ${attempt}/${retries}):`, error);
+        
+        if (attempt === retries) {
+          return null;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        const delay = Math.pow(2, attempt) * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    return null;
   }
 
-  public async getIsPostInteresting(post: string, criteria: Pick<PropmtData, 'interesting' | 'uninteresting'>): Promise<number | null> {
+  public async getIsPostInteresting(post: string, criteria: Pick<PromptData, 'interesting' | 'uninteresting'>): Promise<number | null> {
     const parts: Part[] = [
       { text: promptIsPostInteresting(post) },
       { text: `Interesting topics: ${criteria.interesting.join(', ')}.` },

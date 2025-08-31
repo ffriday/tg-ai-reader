@@ -148,36 +148,47 @@ export class TelegramService {
     });
   }
 
-  public async markDialogAsRead(dialog: Dialog) {
+  public async markDialogAsRead(dialog: Dialog): Promise<boolean> {
     try {
       if (dialog.isChannel) {
         await this.client.invoke(
           new Api.channels.ReadHistory({
             channel: dialog.id,
-            maxId: 0
+            maxId: 0 // 0 means mark all messages as read
           })
         );
       } else {
         await this.client.invoke(
           new Api.messages.ReadHistory({
             peer: dialog.id,
-            maxId: 0
+            maxId: 0 // 0 means mark all messages as read
           })
         );
       }
+      console.log(`Successfully marked dialog ${dialog.name} as read`);
+      return true;
     } catch (error) {
-      console.error("Error marking dialog as read:", error);
+      console.error(`Error marking dialog ${dialog.name} as read:`, error);
+      return false; // Return false to indicate failure
     }
   }
 
-  public async getUnreadMessagesInDialog(dialog: Dialog, limit: number = 100) {
-    const entity = dialog.entity;
-    const unreadCount = dialog.unreadCount || 0;
-    if (unreadCount === 0) {
+  public async getUnreadMessagesInDialog(dialog: Dialog, limit: number = 100): Promise<Api.Message[]> {
+    try {
+      const entity = dialog.entity;
+      const unreadCount = dialog.unreadCount || 0;
+      if (unreadCount === 0) {
+        return [];
+      }
+
+      // Use the smaller of unreadCount and limit to avoid fetching too many messages
+      const fetchLimit = Math.min(unreadCount, limit);
+      const messages = await this.client.getMessages(entity, { limit: fetchLimit });
+      return messages;
+    } catch (error) {
+      console.error(`Error fetching unread messages from ${dialog.name}:`, error);
       return [];
     }
-
-    return await this.client.getMessages(entity, { limit: unreadCount });
   }
 
   public async getNewMessages() {
@@ -206,32 +217,45 @@ export class TelegramService {
     ) || null;
   }
 
-  public async forwardMessages(fromDialog: Dialog, messages: Api.Message[]) {
-    if (!this.targetChannel) {
-      await this.findChannelByName();
-    }
+  public async forwardMessages(fromDialog: Dialog, messages: Api.Message[]): Promise<boolean> {
+    try {
+      if (!this.targetChannel) {
+        await this.findChannelByName();
+      }
 
-    if (!this.targetChannel) {
-      console.error("Target channel is not set");
-      return;
-    }
+      if (!this.targetChannel) {
+        console.error("Target channel not found or not set");
+        return false;
+      }
 
-    const fromEntity = fromDialog.entity;
-    const toEntity = this.targetChannel.entity;
-    if (!fromEntity || !toEntity) {
-      console.error("Invalid entities");
-      return;
-    }
-    const messageIds = messages.map((msg) => msg.id);
+      const fromEntity = fromDialog.entity;
+      const toEntity = this.targetChannel.entity;
+      if (!fromEntity || !toEntity) {
+        console.error("Invalid entities for forwarding");
+        return false;
+      }
+      
+      const messageIds = messages.map((msg) => msg.id);
+      if (messageIds.length === 0) {
+        console.warn("No messages to forward");
+        return true;
+      }
 
-    await this.client.invoke(
-      new Api.messages.ForwardMessages({
-        fromPeer: fromEntity,
-        toPeer: toEntity,
-        id: messageIds,
-        withMyScore: false,
-        dropAuthor: false,
-      })
-    );
+      await this.client.invoke(
+        new Api.messages.ForwardMessages({
+          fromPeer: fromEntity,
+          toPeer: toEntity,
+          id: messageIds,
+          withMyScore: false,
+          dropAuthor: false,
+        })
+      );
+      
+      console.log(`Successfully forwarded ${messageIds.length} messages from ${fromDialog.name} to ${this.targetChannel.name}`);
+      return true;
+    } catch (error) {
+      console.error(`Error forwarding messages from ${fromDialog.name}:`, error);
+      return false;
+    }
   }
 };

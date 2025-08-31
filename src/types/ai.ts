@@ -1,4 +1,4 @@
-import type { PropmtData } from './propmts';
+import type { PromptData } from './prompts';
 
 export const GeminiModels = {
   gemini_1_5_flash: 'gemini-1.5-flash',
@@ -7,5 +7,5 @@ export const GeminiModels = {
 export type GeminiModel = (typeof GeminiModels)[keyof typeof GeminiModels];
 
 export type AIProvider = {
-  getIsPostInteresting: (prompt: string, data: PropmtData) => Promise<number | null>;
+  getIsPostInteresting: (prompt: string, data: PromptData) => Promise<number | null>;
 };
