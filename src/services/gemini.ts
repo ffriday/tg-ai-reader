@@ -7,10 +7,13 @@ import { isNumber } from '@/utils/isNumber';
 export class GeminiAI implements AIProvider {
   private ai: GoogleGenerativeAI;
   private model: GenerativeModel;
+  private lastRequestTime: number = 0;
+  private minRequestInterval: number = 1000; // Minimum 1 second between requests
 
   constructor(
     apiKey: string | undefined,
     model: GeminiModel = 'gemini-1.5-flash',
+    requestInterval: number = 1000
   ) {
     if (!apiKey) {
       throw new Error('API key is required for GeminiAI');
@@ -18,9 +21,24 @@ export class GeminiAI implements AIProvider {
 
     this.ai = new GoogleGenerativeAI(apiKey);
     this.model = this.ai.getGenerativeModel({ model });
+    this.minRequestInterval = requestInterval;
+  }
+
+  private async rateLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    if (timeSinceLastRequest < this.minRequestInterval) {
+      const waitTime = this.minRequestInterval - timeSinceLastRequest;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    this.lastRequestTime = Date.now();
   }
 
   private async ask(prompt: string | GenerateContentRequest | (string | Part)[], retries: number = 3): Promise<string | null> {
+    await this.rateLimit();
+    
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         const result = await this.model.generateContent(prompt);

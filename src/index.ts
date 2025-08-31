@@ -2,46 +2,7 @@ import { sleep } from 'bun';
 import { TelegramService } from './services/telegram.js';
 import { GeminiAI } from '@/services/gemini.js';
 import { AIService } from './services/ai.js';
-import { isString } from './utils/isString.js';
-
-const aiApiKey = Bun.env.AI_KEY;
-const tgApiId = Bun.env.TG_API_ID;
-const tgApiHash = Bun.env.TG_API_HASH;
-const sessionString = Bun.env.TG_SESSION_STRING;
-const chatFolder = Bun.env.TG_CHAT_FOLDER;
-const targetChannelName = Bun.env.TG_TARGET_CHANNEL;
-const timeout = Number(Bun.env.TIMEOUT) || 1000;
-const interestThreshold = Number(Bun.env.POST_INTEREST_THRESHOLD) || 0.5;
-
-const validateEnvironmentVariables = () => {
-  const requiredVars = {
-    AI_KEY: aiApiKey,
-    TG_API_ID: tgApiId,
-    TG_API_HASH: tgApiHash,
-  };
-
-  const missingVars = Object.entries(requiredVars)
-    .filter(([, value]) => !isString(value))
-    .map(([key]) => key);
-
-  if (missingVars.length > 0) {
-    console.error(`Environment variables must be set and non-empty: ${missingVars.join(', ')}`);
-    return false;
-  }
-
-  // Validate numeric values
-  if (isNaN(timeout) || timeout < 0) {
-    console.error('TIMEOUT must be a valid positive number');
-    return false;
-  }
-
-  if (isNaN(interestThreshold) || interestThreshold < 0 || interestThreshold > 1) {
-    console.error('POST_INTEREST_THRESHOLD must be a number between 0 and 1');
-    return false;
-  }
-
-  return true;
-};
+import { ConfigManager, type AppConfig } from '@/config/config.js';
 
 const gracefulShutdown = async (telegramService: TelegramService | null, exitCode: number = 0) => {
   console.log('Shutting down gracefully...');
@@ -56,11 +17,16 @@ const gracefulShutdown = async (telegramService: TelegramService | null, exitCod
 };
 
 const main = async () => {
-  if (!validateEnvironmentVariables()) {
+  let config: AppConfig;
+  let telegramService: TelegramService | null = null;
+
+  try {
+    config = ConfigManager.loadConfig();
+    console.log('Configuration loaded successfully');
+  } catch (error) {
+    console.error('Configuration error:', error);
     return;
   }
-
-  let telegramService: TelegramService | null = null;
 
   // Setup graceful shutdown handlers
   process.on('SIGINT', () => gracefulShutdown(telegramService, 0));
@@ -71,18 +37,15 @@ const main = async () => {
   });
 
   try {
-    const aiProvider = new GeminiAI(aiApiKey);
-    const aiService = new AIService(
-      aiProvider,
-      './src/config/prompts.json',
-    );
+    const aiProvider = new GeminiAI(config.ai.apiKey, 'gemini-1.5-flash', config.ai.requestInterval);
+    const aiService = new AIService(aiProvider, config.prompts.filePath);
 
     telegramService = new TelegramService(
-      sessionString,
-      Number(tgApiId),
-      tgApiHash,
-      chatFolder,
-      targetChannelName,
+      config.telegram.sessionString,
+      config.telegram.apiId,
+      config.telegram.apiHash,
+      config.telegram.chatFolder,
+      config.telegram.targetChannelName,
     );
 
     await telegramService.connect();
@@ -105,7 +68,7 @@ const main = async () => {
           }
 
           const interestScore = await aiService.getIsPostInteresting(message.text);
-          if (interestScore !== null && interestScore >= interestThreshold) {
+          if (interestScore !== null && interestScore >= config.processing.interestThreshold) {
             messagesToForward.push(message);
           }
           console.log(`Channel: ${dialog.name}\nMessage: ${message.text.slice(0, 50)}\nInterest Score: ${interestScore}`);
@@ -127,7 +90,7 @@ const main = async () => {
         // Continue processing other dialogs
       }
       
-      await sleep(timeout);
+      await sleep(config.processing.timeout);
     }
 
     console.log("All messages processed.");
