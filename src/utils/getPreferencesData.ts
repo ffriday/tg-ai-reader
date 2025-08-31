@@ -1,4 +1,5 @@
 import { readFileSync } from "fs";
+import { logger } from './logger';
 
 export const getPreferencesData = (path: string) => {
   try {
@@ -16,7 +17,7 @@ export const getPreferencesData = (path: string) => {
     
     return data;
   } catch (error) {
-    console.error("Error reading or parsing preferences data:", error);
+    logger.error("Error reading or parsing preferences data:", error);
     throw error; // Re-throw instead of returning null
   }
 };

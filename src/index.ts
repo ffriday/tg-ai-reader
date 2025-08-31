@@ -3,15 +3,16 @@ import { TelegramService } from './services/telegram.js';
 import { GeminiAI } from '@/services/gemini.js';
 import { AIService } from './services/ai.js';
 import { ConfigManager, type AppConfig } from '@/config/config.js';
+import { logger } from '@/utils/logger.js';
 
 const gracefulShutdown = async (telegramService: TelegramService | null, exitCode: number = 0) => {
-  console.log('Shutting down gracefully...');
+  logger.info('Shutting down gracefully...');
   try {
     if (telegramService) {
       await telegramService.disconnect();
     }
   } catch (error) {
-    console.error('Error during shutdown:', error);
+    logger.error('Error during shutdown:', error);
   }
   process.exit(exitCode);
 };
@@ -22,9 +23,9 @@ const main = async () => {
 
   try {
     config = ConfigManager.loadConfig();
-    console.log('Configuration loaded successfully');
+    logger.info('Configuration loaded successfully');
   } catch (error) {
-    console.error('Configuration error:', error);
+    logger.error('Configuration error:', error);
     return;
   }
 
@@ -32,7 +33,7 @@ const main = async () => {
   process.on('SIGINT', () => gracefulShutdown(telegramService, 0));
   process.on('SIGTERM', () => gracefulShutdown(telegramService, 0));
   process.on('uncaughtException', (error) => {
-    console.error('Uncaught exception:', error);
+    logger.error('Uncaught exception:', error);
     gracefulShutdown(telegramService, 1);
   });
 
@@ -53,17 +54,17 @@ const main = async () => {
     const dialogMessages = await telegramService.getNewMessages();
     const totalChannels = dialogMessages.length;
     const totalMessages = dialogMessages.reduce((sum, { messages }) => sum + messages.length, 0);
-    console.log(`Fetched ${totalMessages} new messages from ${totalChannels} channels.`);
+    logger.info(`Fetched ${totalMessages} new messages from ${totalChannels} channels.`);
 
     for (const { dialog, messages } of dialogMessages) {
-      console.log(`Analyzing messages in dialog: ${dialog.name}`);
+      logger.info(`Analyzing messages in dialog: ${dialog.name}`);
       const messagesToForward = [];
       
       for (const message of messages) {
         try {
           // Check if message has text content
           if (!message.text || typeof message.text !== 'string' || message.text.trim().length === 0) {
-            console.log(`Skipping message without text content in ${dialog.name}`);
+            logger.debug(`Skipping message without text content in ${dialog.name}`);
             continue;
           }
 
@@ -71,9 +72,9 @@ const main = async () => {
           if (interestScore !== null && interestScore >= config.processing.interestThreshold) {
             messagesToForward.push(message);
           }
-          console.log(`Channel: ${dialog.name}\nMessage: ${message.text.slice(0, 50)}\nInterest Score: ${interestScore}`);
+          logger.info(`Channel: ${dialog.name}\nMessage: ${message.text.slice(0, 50)}\nInterest Score: ${interestScore}`);
         } catch (error) {
-          console.error(`Error processing message in ${dialog.name}:`, error);
+          logger.error(`Error processing message in ${dialog.name}:`, error);
           // Continue processing other messages
         }
       }
@@ -81,22 +82,23 @@ const main = async () => {
       try {
         if (messagesToForward.length > 0) {
           await telegramService.forwardMessages(dialog, messagesToForward);
-          console.log(`Forwarded ${messagesToForward.length} messages from ${dialog.name}`);
+          logger.info(`Forwarded ${messagesToForward.length} messages from ${dialog.name}`);
         }
         
         await telegramService.markDialogAsRead(dialog);
       } catch (error) {
-        console.error(`Error processing dialog ${dialog.name}:`, error);
+        logger.error(`Error processing dialog ${dialog.name}:`, error);
         // Continue processing other dialogs
       }
       
       await sleep(config.processing.timeout);
     }
 
-    console.log("All messages processed.");
+    const cacheStats = aiService.getCacheStats();
+    logger.info(`Processing completed. AI cache size: ${cacheStats.size} entries`);
     await gracefulShutdown(telegramService, 0);
   } catch (error) {
-    console.error('Fatal error:', error);
+    logger.error('Fatal error:', error);
     await gracefulShutdown(telegramService, 1);
   }
 };

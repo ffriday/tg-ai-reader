@@ -15,6 +15,10 @@ Content is filtered based on personalized interest criteria that you define in a
 - 📊 Filtering based on interest threshold value (from 0 to 1)
 - 📬 Forward interesting messages to a target channel
 - ✅ Automatic marking of messages as read
+- 🚀 Robust error handling and graceful shutdown
+- ⚡ AI response caching for improved performance
+- 🔧 Rate limiting to respect API limits
+- 📝 Comprehensive logging system
 
 ## Installation
 
@@ -46,11 +50,17 @@ TG_TARGET_CHANNEL=MyDigest
 # AI API key (Google Gemini)
 AI_KEY=your_gemini_api_key
 
+# Minimum interval between AI API requests in milliseconds (default: 1000)
+AI_REQUEST_INTERVAL=1000
+
 # Interest threshold for messages (from 0 to 1)
 POST_INTEREST_THRESHOLD=0.7
 
 # Timeout between processing chats (in ms)
 TIMEOUT=1000
+
+# Path to prompts configuration file (optional)
+PROMPTS_FILE_PATH=./src/config/prompts.json
 ```
 
 ## Content Configuration
@@ -88,6 +98,19 @@ bun start
 ```
 
 First-time launch will require Telegram authorization via phone number and verification code.
+
+## Key Improvements
+
+This application has been enhanced with:
+
+- **Robust Error Handling**: Comprehensive error handling throughout the application with graceful degradation
+- **Configuration Management**: Centralized configuration with validation
+- **Rate Limiting**: Protects against API rate limits
+- **Caching**: AI responses are cached to improve performance and reduce API calls
+- **Logging**: Structured logging with different levels (DEBUG, INFO, WARN, ERROR)
+- **Graceful Shutdown**: Proper cleanup of resources on application termination
+- **Input Validation**: Thorough validation of messages and configuration
+- **Retry Logic**: Automatic retry for failed AI API calls with exponential backoff
 
 ## Technologies
 
