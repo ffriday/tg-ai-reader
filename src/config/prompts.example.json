@@ -1,0 +1,15 @@
+{
+  "interesting": [
+    "Tech news",
+    "AI advancements",
+    "Space exploration",
+    "Example location: New York",
+    "Hot and important news",
+    "Funny news and memes"
+  ],
+  "uninteresting": [
+    "News compilations",
+    "Boring news",
+    "Sports news"
+  ]
+}
