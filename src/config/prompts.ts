@@ -11,3 +11,5 @@ If the post does not exactly match any criteria, estimate the score by interpola
 
 Do NOT return any text other than the numeric score.
 Post to analyze: "${post}"`;
+
+export const promptJsonOnly = "You are a helpful assistant. Always respond with valid JSON only, without any explanations or extra text.";

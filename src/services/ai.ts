@@ -1,4 +1,4 @@
-import type { AIProvider } from '@/types/ai';
+import type { AIProvider, AiType } from '@/types/ai';
 import type { PropmtData } from '@/types/propmts';
 import { getPreferencesData } from '@/utils/getPreferencesData';
 

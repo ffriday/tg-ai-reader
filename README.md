@@ -8,6 +8,8 @@ tg-ai-reader analyzes unread messages from a selected chat folder in Telegram, e
 
 Content is filtered based on personalized interest criteria that you define in a configuration file.
 
+You can choose between Google Gemini or Ollama (local LLM) for AI analysis.
+
 ## Features
 
 - 📂 Read messages from a selected Telegram channels folder
@@ -15,6 +17,8 @@ Content is filtered based on personalized interest criteria that you define in a
 - 📊 Filtering based on interest threshold value (from 0 to 1)
 - 📬 Forward interesting messages to a target channel
 - ✅ Automatic marking of messages as read
+
+- 🦙 Optional support for Ollama (local LLM)
 
 ## Installation
 
@@ -51,6 +55,10 @@ POST_INTEREST_THRESHOLD=0.7
 
 # Timeout between processing chats (in ms)
 TIMEOUT=1000
+
+# Ollama configuration (optional, for local LLM)
+OLLAMA_HOST=127.0.0.1:11434
+OLLAMA_MODEL=llama2
 ```
 
 ## Content Configuration
@@ -94,3 +102,4 @@ First-time launch will require Telegram authorization via phone number and verif
 - [Bun](https://bun.sh) - JavaScript runtime and package manager
 - [GramJS](https://gram.js.org/) - Telegram client for JavaScript
 - [Google Gemini AI](https://deepmind.google/technologies/gemini/) - AI model for text analysis
+ - [Ollama](https://ollama.com/) - Local LLM for text analysis
